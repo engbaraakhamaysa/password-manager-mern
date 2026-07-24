@@ -17,8 +17,7 @@
 // ==========================================================
 
 import { Request, Response, NextFunction } from "express";
-
-import { UserRole } from "../models/User.js";
+import { UserRole } from "../types/user.types";
 
 // ==========================================================
 // Require Admin Access

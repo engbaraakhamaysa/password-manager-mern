@@ -1,99 +1,55 @@
 // ==========================================================
 // Authentication Controller
 // ==========================================================
-// Responsible for:
-// - Register new users
-// - Authenticate existing users
-// - Generate JWT tokens
+// Responsible for handling authentication HTTP requests.
+//
+// Responsibilities:
+// - Receive request data
+// - Call authentication service
+// - Return HTTP responses
+//
+// Database operations are handled inside services.
+// Validation is handled by validation middleware.
 // ==========================================================
 
 import { Request, Response } from "express";
-import bcrypt from "bcryptjs";
-import { User, UserRole, UserStatus } from "../models/User.js";
 
-import { generateToken } from "../helpers/generateToken.js";
+import { registerService, loginService } from "../service/auth.service.js";
+
+import { RegisterBody, LoginBody } from "../types/auth.types.js";
 
 // ==========================================================
 // Register User
 // ==========================================================
+// POST /api/auth/register
+// ==========================================================
 
 export const register = async (
-  req: Request,
+  req: Request<{}, {}, RegisterBody>,
   res: Response,
 ): Promise<Response> => {
-  const { name, email, password } = req.body;
-
-  // ========================================================
-  // Validate Request Data
-  // ========================================================
-
-  if (!name || !email || !password) {
-    return res.status(400).json({
-      message: "Name, email and password are required",
-    });
-  }
-
-  if (name.trim().length < 3) {
-    return res.status(400).json({
-      message: "Name must be at least 3 characters",
-    });
-  }
-
-  if (password.length < 8) {
-    return res.status(400).json({
-      message: "Password must be at least 8 characters",
-    });
-  }
-
   try {
-    // ======================================================
-    // Check Existing User
-    // ======================================================
+    const result = await registerService(req.body);
 
-    const existingUser = await User.findOne({
-      email: email.toLowerCase(),
+    return res.status(201).json({
+      message: "Registration successful",
+      data: result,
     });
+  } catch (error) {
+    // ======================================================
+    // Email Already Exists
+    // ======================================================
 
-    if (existingUser) {
+    if (error instanceof Error && error.message === "EMAIL_ALREADY_EXISTS") {
       return res.status(409).json({
         message: "Email already exists",
       });
     }
 
     // ======================================================
-    // Hash Password
+    // Internal Server Error
     // ======================================================
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // ======================================================
-    // Create User
-    // ======================================================
-
-    const user = await User.create({
-      name,
-
-      email,
-
-      password: hashedPassword,
-
-      role: UserRole.USER,
-    });
-
-    // ======================================================
-    // Generate Token
-    // ======================================================
-
-    const token = generateToken(user);
-
-    return res.status(201).json({
-      message: "Registration successful",
-
-      data: {
-        token,
-      },
-    });
-  } catch (error) {
     console.error("Register error:", error);
 
     return res.status(500).json({
@@ -105,55 +61,45 @@ export const register = async (
 // ==========================================================
 // Login User
 // ==========================================================
+// POST /api/auth/login
+// ==========================================================
 
-export const login = async (req: Request, res: Response): Promise<Response> => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({
-      message: "Email and password are required",
-    });
-  }
-
+export const login = async (
+  req: Request<{}, {}, LoginBody>,
+  res: Response,
+): Promise<Response> => {
   try {
-    const user = await User.findOne({
-      email: email.toLowerCase(),
-    });
+    const result = await loginService(req.body);
 
-    if (!user) {
+    return res.status(200).json({
+      message: "Login successful",
+      data: result,
+    });
+  } catch (error) {
+    // ======================================================
+    // Invalid Credentials
+    // ======================================================
+
+    if (error instanceof Error && error.message === "INVALID_CREDENTIALS") {
       return res.status(401).json({
         message: "Invalid email or password",
       });
     }
 
-    if (user.status === UserStatus.BLOCKED) {
+    // ======================================================
+    // Blocked Account
+    // ======================================================
+
+    if (error instanceof Error && error.message === "ACCOUNT_BLOCKED") {
       return res.status(403).json({
         message: "Your account has been blocked",
       });
     }
 
-    const isMatch = await bcrypt.compare(
-      password,
+    // ======================================================
+    // Internal Server Error
+    // ======================================================
 
-      user.password,
-    );
-
-    if (!isMatch) {
-      return res.status(401).json({
-        message: "Invalid email or password",
-      });
-    }
-
-    const token = generateToken(user);
-
-    return res.status(200).json({
-      message: "Login successful",
-
-      data: {
-        token,
-      },
-    });
-  } catch (error) {
     console.error("Login error:", error);
 
     return res.status(500).json({

@@ -1,10 +1,62 @@
+// ==========================================================
+// Authentication Routes
+// ==========================================================
+// Defines public authentication routes.
+//
+// Routes:
+// - Register
+// - Login
+//
+// These routes do not require authentication.
+// ==========================================================
+
 import { Router } from "express";
-import { register, login } from "../controllers/auth.controller";
+
+// ==========================================================
+// Controllers
+// ==========================================================
+
+import { register, login } from "../controllers/auth.controller.js";
+
+// ==========================================================
+// Middleware
+// ==========================================================
+
+import { validate } from "../middleware/validate.middleware.js";
+
+// ==========================================================
+// Validators
+// ==========================================================
+
+import {
+  validateRegister,
+  validateLogin,
+} from "../validators/auth.validator.js";
+
+// ==========================================================
+// Router Initialization
+// ==========================================================
 
 const router = Router();
 
-router.post("/register", register);
+// ==========================================================
+// Register
+// ==========================================================
+// POST /api/auth/register
+// ==========================================================
 
-router.post("/login", login);
+router.post("/register", validate(validateRegister, "body"), register);
+
+// ==========================================================
+// Login
+// ==========================================================
+// POST /api/auth/login
+// ==========================================================
+
+router.post("/login", validate(validateLogin, "body"), login);
+
+// ==========================================================
+// Export Router
+// ==========================================================
 
 export default router;
