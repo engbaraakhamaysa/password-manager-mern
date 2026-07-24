@@ -1,46 +1,75 @@
-import { Document } from "mongoose";
+// ==========================================================
+// User Types
+// ==========================================================
+// Contains TypeScript types used by user operations.
+// ==========================================================
 
-export interface IUser extends Document {
+import { Types } from "mongoose";
+
+// ==========================================================
+// User Role
+// ==========================================================
+
+export enum UserRole {
+  USER = "user",
+  ADMIN = "admin",
+}
+
+// ==========================================================
+// User Status
+// ==========================================================
+
+export enum UserStatus {
+  ACTIVE = "active",
+  BLOCKED = "blocked",
+}
+
+// ==========================================================
+// User Document Type
+// ==========================================================
+
+export interface IUser {
+  _id: Types.ObjectId;
+
   name: string;
+
   email: string;
+
   password: string;
-  role: "user" | "admin";
-  status: "active" | "blocked";
+
+  role: UserRole;
+
+  status: UserStatus;
+
   createdAt: Date;
+
   updatedAt: Date;
 }
 
 // ==========================================================
-// User Request Types
-// ==========================================================
-// Contains TypeScript types used by user controllers
-// and services.
+// User ID Params
 // ==========================================================
 
+export interface UserIdParams {
+  id: string;
+}
+
 // ==========================================================
-// Update Profile Request Body
-// ==========================================================
-// Used when the authenticated user updates their profile.
-//
-// Editable fields:
-// - name
-// - email
-//
-// Both fields are optional.
+// Update Profile Body
 // ==========================================================
 
 export interface UpdateProfileBody {
   name?: string;
+
   email?: string;
 }
 
 // ==========================================================
-// Change Password Request Body
-// ==========================================================
-// Used when the authenticated user changes their password.
+// Change Password Body
 // ==========================================================
 
 export interface ChangePasswordBody {
   currentPassword: string;
+
   newPassword: string;
 }

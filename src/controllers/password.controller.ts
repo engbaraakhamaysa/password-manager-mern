@@ -1,64 +1,55 @@
 // ==========================================================
 // Password Controller
 // ==========================================================
-// Responsible for:
-// - Creating saved passwords
-// - Retrieving user passwords
-// - Updating passwords
-// - Deleting passwords
+// Responsible for handling password-related HTTP requests.
 //
-// Security:
-// Password values are encrypted before saving to database.
+// Responsibilities:
+// - Receive request data
+// - Call password service layer
+// - Return HTTP responses
+//
+// Database operations are handled inside services.
+// Validation is handled by validation middleware.
+// Authentication is handled by protect middleware.
 // ==========================================================
 
 import { Request, Response } from "express";
 
-import { Password } from "../models/Passoerd";
+import {
+  createPasswordService,
+  getPasswordsService,
+  getPasswordByIdService,
+  updatePasswordService,
+  deletePasswordService,
+} from "../service/password.service.js";
 
-import { CreatePasswordBody } from "../types/create.types.js";
-import { UpdatePasswordBody } from "../types/update.type";
-
-import { encrypt, decrypt } from "../utils/encryption.js";
+import {
+  PasswordIdParams,
+  CreatePasswordBody,
+  UpdatePasswordBody,
+} from "../types/password.types.js";
 
 // ==========================================================
 // Create Password
+// ==========================================================
+// Authenticated users only.
+//
+// Creates a new encrypted password record.
 // ==========================================================
 
 export const createPassword = async (
   req: Request<{}, {}, CreatePasswordBody>,
   res: Response,
 ): Promise<Response> => {
-  const { website, username, password, notes } = req.body;
-
-  // ========================================================
-  // Validate Request Data
-  // ========================================================
-
-  if (!website || !username || !password) {
-    return res.status(400).json({
-      message: "Website, username and password are required",
-    });
-  }
-
   try {
-    // ======================================================
-    // Create Encrypted Password
-    // ======================================================
+    // Get authenticated user ID
+    const userId = req.user!.id.toString();
 
-    const newPassword = await Password.create({
-      userId: req.user!.id,
-
-      website,
-
-      username,
-
-      password: encrypt(password),
-
-      notes,
-    });
+    // Create password
+    const password = await createPasswordService(userId, req.body);
 
     return res.status(201).json({
-      data: newPassword,
+      data: password,
     });
   } catch (error) {
     console.error("Create password error:", error);
@@ -72,26 +63,24 @@ export const createPassword = async (
 // ==========================================================
 // Get All Passwords
 // ==========================================================
+// Authenticated users only.
+//
+// Returns only passwords belonging to the authenticated user.
+// ==========================================================
 
 export const getPasswords = async (
   req: Request,
   res: Response,
 ): Promise<Response> => {
   try {
-    const passwords = await Password.find({
-      userId: req.user!.id,
-    });
+    // Get authenticated user ID
+    const userId = req.user!.id.toString();
 
-    // Decrypt passwords before sending response
-
-    const decryptedPasswords = passwords.map((item) => ({
-      ...item.toObject(),
-
-      password: decrypt(item.password),
-    }));
+    // Get user's passwords
+    const passwords = await getPasswordsService(userId);
 
     return res.status(200).json({
-      data: decryptedPasswords,
+      data: passwords,
     });
   } catch (error) {
     console.error("Get passwords error:", error);
@@ -105,18 +94,23 @@ export const getPasswords = async (
 // ==========================================================
 // Get Password By ID
 // ==========================================================
+// Authenticated users only.
+//
+// Returns a single password belonging to the authenticated user.
+// ==========================================================
 
 export const getPasswordById = async (
-  req: Request,
+  req: Request<PasswordIdParams>,
   res: Response,
 ): Promise<Response> => {
   try {
-    const password = await Password.findOne({
-      _id: req.params.id,
+    // Get authenticated user ID
+    const userId = req.user!.id.toString();
 
-      userId: req.user!.id,
-    });
+    // Get password by ID
+    const password = await getPasswordByIdService(userId, req.params.id);
 
+    // Password not found
     if (!password) {
       return res.status(404).json({
         message: "Password not found",
@@ -124,14 +118,10 @@ export const getPasswordById = async (
     }
 
     return res.status(200).json({
-      data: {
-        ...password.toObject(),
-
-        password: decrypt(password.password),
-      },
+      data: password,
     });
   } catch (error) {
-    console.error("Get password error:", error);
+    console.error("Get password by id error:", error);
 
     return res.status(500).json({
       message: "Internal server error",
@@ -142,56 +132,35 @@ export const getPasswordById = async (
 // ==========================================================
 // Update Password
 // ==========================================================
+// Authenticated users only.
+//
+// Updates only the authenticated user's password record.
+// ==========================================================
 
 export const updatePassword = async (
-  req: Request<{ id: string }, {}, UpdatePasswordBody>,
+  req: Request<PasswordIdParams, {}, UpdatePasswordBody>,
   res: Response,
 ): Promise<Response> => {
-  const { website, username, password, notes } = req.body;
-
   try {
-    const updatedPassword = await Password.findOneAndUpdate(
-      {
-        _id: req.params.id,
+    // Get authenticated user ID
+    const userId = req.user!.id.toString();
 
-        userId: req.user!.id,
-      },
-
-      {
-        ...(website && {
-          website,
-        }),
-
-        ...(username && {
-          username,
-        }),
-
-        ...(password && {
-          password: encrypt(password),
-        }),
-
-        ...(notes !== undefined && {
-          notes,
-        }),
-      },
-
-      {
-        new: true,
-      },
+    // Update password
+    const password = await updatePasswordService(
+      userId,
+      req.params.id,
+      req.body,
     );
 
-    if (!updatedPassword) {
+    // Password not found
+    if (!password) {
       return res.status(404).json({
         message: "Password not found",
       });
     }
 
     return res.status(200).json({
-      data: {
-        ...updatedPassword.toObject(),
-
-        password: decrypt(updatedPassword.password),
-      },
+      data: password,
     });
   } catch (error) {
     console.error("Update password error:", error);
@@ -205,18 +174,23 @@ export const updatePassword = async (
 // ==========================================================
 // Delete Password
 // ==========================================================
+// Authenticated users only.
+//
+// Deletes only the authenticated user's password record.
+// ==========================================================
 
 export const deletePassword = async (
-  req: Request<{ id: string }>,
+  req: Request<PasswordIdParams>,
   res: Response,
 ): Promise<Response> => {
   try {
-    const password = await Password.findOneAndDelete({
-      _id: req.params.id,
+    // Get authenticated user ID
+    const userId = req.user!.id.toString();
 
-      userId: req.user!.id,
-    });
+    // Delete password
+    const password = await deletePasswordService(userId, req.params.id);
 
+    // Password not found
     if (!password) {
       return res.status(404).json({
         message: "Password not found",

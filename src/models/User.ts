@@ -7,47 +7,9 @@
 // Never store plain passwords in database.
 // ==========================================================
 
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
-// ==========================================================
-// User Interface
-// ==========================================================
-
-export interface IUser extends Document {
-  name: string;
-
-  email: string;
-
-  password: string;
-
-  role: UserRole;
-
-  status: UserStatus;
-
-  createdAt: Date;
-
-  updatedAt: Date;
-}
-
-// ==========================================================
-// User Role Enum
-// ==========================================================
-
-export enum UserRole {
-  USER = "user",
-
-  ADMIN = "admin",
-}
-
-// ==========================================================
-// User Status Enum
-// ==========================================================
-
-export enum UserStatus {
-  ACTIVE = "active",
-
-  BLOCKED = "blocked",
-}
+import { IUser, UserRole, UserStatus } from "../types/user.types.js";
 
 // ==========================================================
 // User Schema
@@ -112,15 +74,11 @@ const userSchema = new Schema<IUser>(
 // ==========================================================
 // Hide Sensitive Data
 // ==========================================================
-// Prevent password hash from being returned in API responses.
-// ==========================================================
 
 userSchema.set("toJSON", {
   transform: (_doc, ret) => {
     const user = ret as Partial<IUser>;
-
     delete user.password;
-
     return user;
   },
 });
