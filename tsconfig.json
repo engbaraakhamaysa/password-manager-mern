@@ -5,7 +5,7 @@
     "module": "Node16",
     "moduleResolution": "Node16",
 
-    "rootDir": "./src",
+    "rootDir": ".",
     "outDir": "./dist",
 
     "strict": true,
@@ -15,7 +15,7 @@
 
     "skipLibCheck": true,
 
-    "types": ["node"],
+    "types": ["node", "jasmine"],
 
     "sourceMap": true,
     "removeComments": true,
@@ -24,6 +24,6 @@
     "noFallthroughCasesInSwitch": true
   },
 
-  "include": ["src"],
+  "include": ["src", "tests"],
   "exclude": ["node_modules", "dist"]
 }
