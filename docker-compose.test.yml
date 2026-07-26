@@ -1,0 +1,41 @@
+services:
+  api-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    ports:
+      - "5001:5000"
+
+    environment:
+      NODE_ENV: test
+      PORT: 5000
+      MONGO_URI: mongodb://mongodb-test:27017/password_manager_test
+      JWT_SECRET: test-jwt-secret
+      ENCRYPTION_KEY: test-encryption-key
+
+    depends_on:
+      mongodb-test:
+        condition: service_healthy
+
+  mongodb-test:
+    image: mongo:8
+
+    ports:
+      - "27018:27017"
+
+    environment:
+      MONGO_INITDB_DATABASE: password_manager_test
+
+    volumes:
+      - mongodb_test_data:/data/db
+
+    healthcheck:
+      test:
+        ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mongodb_test_data:
