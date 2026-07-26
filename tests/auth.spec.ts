@@ -1,18 +1,8 @@
 import request from "supertest";
-import dotenv from "dotenv";
 
-dotenv.config();
-
-import app from "../src/app.js";
-import { connectDB } from "../src/config/db.js";
-
-describe("Auth API", () => {
-  beforeAll(async () => {
-    await connectDB();
-  });
-
+describe("Auth API - Register", () => {
   it("should register a new user", async () => {
-    const response = await request(app)
+    const response = await request("http://localhost:5001")
       .post("/api/auth/register")
       .send({
         name: "Test User",
